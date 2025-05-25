@@ -98,3 +98,115 @@ public class Race
         Console.WriteLine($"\nПобедил {winner.Name}!\n");
     }
 }
+
+Game game = new();
+game.Setup();
+game.Play();
+
+Console.ReadLine();
+
+public class Karta
+{
+    public string Suit { get; set; }
+    public string Value { get; set; }
+    public int Power { get; set; }
+
+    public Karta(string suit, string value, int power)
+    {
+        Suit = suit;
+        Value = value;
+        Power = power;
+    }
+
+    public override string ToString() => $"{Value} {Suit}";
+}
+
+public class Player
+{
+    public string Name { get; set; }
+    public Queue<Karta> Cards { get; private set; } = new();
+
+    public Player(string name) => Name = name;
+
+    public bool HasCards => Cards.Count > 0;
+
+    public Karta PlayCard() => Cards.Dequeue();
+
+    public void AddCards(IEnumerable<Karta> wonCards)
+    {
+        foreach (var card in wonCards)
+            Cards.Enqueue(card);
+    }
+
+    public void ShowCards() =>
+        Console.WriteLine($"{Name} имеет {Cards.Count} карт(ы).");
+}
+
+public class Game
+{
+    private List<Karta> deck = new();
+    private List<Player> players = new();
+
+    private string[] suits = { "Черви", "Бубны", "Трефы", "Пики" };
+    private (string value, int power)[] values =
+    {
+            ("6", 6), ("7", 7), ("8", 8), ("9", 9), ("10", 10),
+            ("Валет", 11), ("Дама", 12), ("Король", 13), ("Туз", 14)
+        };
+
+    public void Setup()
+    {
+        foreach (var suit in suits)
+            foreach (var (value, power) in values)
+                deck.Add(new Karta(suit, value, power));
+
+        deck = deck.OrderBy(_ => Guid.NewGuid()).ToList();
+
+        players.Add(new Player("Игрок 1"));
+        players.Add(new Player("Игрок 2"));
+
+        for (int i = 0; i < deck.Count; i++)
+            players[i % 2].Cards.Enqueue(deck[i]);
+
+        Console.WriteLine("Карты розданы.\n");
+    }
+
+    public void Play()
+    {
+        int round = 1;
+        while (players.All(p => p.HasCards))
+        {
+            Console.WriteLine($"Раунд {round++}:");
+
+            var card1 = players[0].PlayCard();
+            var card2 = players[1].PlayCard();
+
+            Console.WriteLine($"{players[0].Name} кладёт: {card1}");
+            Console.WriteLine($"{players[1].Name} кладёт: {card2}");
+
+            var pile = new List<Karta> { card1, card2 };
+            int winner = DetermineWinner(card1, card2);
+
+            Console.WriteLine($"➤ Побеждает: {players[winner].Name}\n");
+
+            players[winner].AddCards(pile);
+
+            foreach (var p in players) p.ShowCards();
+
+            Console.WriteLine("-----------------------------");
+            System.Threading.Thread.Sleep(500);
+        }
+
+        var finalWinner = players.First(p => p.HasCards);
+        Console.WriteLine($"\nПобедитель: {finalWinner.Name}!");
+    }
+
+    private int DetermineWinner(Karta c1, Karta c2)
+    {
+        if (c1.Value == "6" && c2.Value == "Туз") return 1;
+        if (c2.Value == "6" && c1.Value == "Туз") return 0;
+
+        if (c1.Power == c2.Power) return 0;
+        return c1.Power > c2.Power ? 0 : 1;
+    }
+}
